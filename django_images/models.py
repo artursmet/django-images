@@ -60,6 +60,13 @@ class Image(models.Model):
         except Thumbnail.DoesNotExist:
             return reverse('image-thumbnail', args=(self.id, size))
 
+    def save(self, *args, **kwargs):
+        if self.pk is not None:
+            old_instance = Image.objects.get(pk=self.pk)
+            if old_instance.image != self.image:
+                self.thumbnail_set.all().delete()
+        super(Image, self).save(*args, **kwargs)
+
 
 class ThumbnailManager(models.Manager):
     def get_or_create_at_size(self, image_id, size):
@@ -111,12 +118,6 @@ class Thumbnail(models.Model):
 
     def get_absolute_url(self):
         return self.image.url
-
-
-@receiver(models.signals.post_save)
-def original_changed(sender, instance, created, **kwargs):
-    if isinstance(instance, Image):
-        instance.thumbnail_set.all().delete()
 
 
 @receiver(models.signals.post_delete)
